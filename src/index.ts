@@ -1,5 +1,6 @@
 const { Command } = require("commander");
 const figlet = require("figlet");
+const readline = require("readline-sync");
 
 const program = new Command();
 
@@ -10,6 +11,10 @@ program
   .description("Run TPS reports against Sequence Relayer")
   .option("-c, --chain  [value]", "Chain to run report on")
   .parse(process.argv);
+
+const privateKey = readline.question("Private key for EOA wallet: ", { hideEchoBack: true });
+
+console.log(privateKey);
 
 const options = program.opts();
 
