@@ -1,6 +1,6 @@
-const { Command } = require("commander");
-const figlet = require("figlet");
-const readline = require("readline-sync");
+import { Command } from "commander";
+import figlet from "figlet";
+import readline from "readline-sync";
 
 import { Session } from '@0xsequence/auth';
 import { ethers } from 'ethers';

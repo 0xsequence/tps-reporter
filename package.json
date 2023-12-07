@@ -3,21 +3,25 @@
   "version": "0.1.0",
   "description": "Measure TPS for Sequence Relayer",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "npx tsc"
+    "build": "npx tsc",
+    "start": "npx tsc && node ./dist/index.js"
   },
   "author": "Taylan Pince",
   "license": "Apache-2.0",
   "dependencies": {
+    "0xsequence": "^1.5.0",
     "commander": "^11.1.0",
-    "figlet": "^1.7.0"
+    "ethers": "^5.7.2",
+    "figlet": "^1.7.0",
+    "readline-sync": "^1.4.10"
   },
   "devDependencies": {
-    "0xsequence": "^1.5.0",
+    "@types/figlet": "^1.5.8",
     "@types/node": "^20.10.4",
-    "ethers": "^5.7.2",
-    "readline-sync": "^1.4.10",
+    "@types/readline-sync": "^1.4.8",
     "typescript": "^5.3.3"
   }
 }
