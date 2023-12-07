@@ -1,7 +1,7 @@
 {
-  "name": "tps-report",
+  "name": "tps-reporter",
   "version": "0.1.0",
-  "description": "Measure TPS for Sequence Relayer",
+  "description": "Run TPS analysis against Sequence Relayer",
   "main": "index.js",
   "type": "module",
   "scripts": {

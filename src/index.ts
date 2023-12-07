@@ -7,11 +7,11 @@ import { ethers } from 'ethers';
 
 const program = new Command();
 
-console.log(figlet.textSync("TPS Report"));
+console.log(figlet.textSync("TPS Reporter"));
 
 program
   .version("0.1.0")
-  .description("Run TPS reports against Sequence Relayer")
+  .description("Run TPS analysis against Sequence Relayer")
   .option("-c, --chain  [value]", "Chain to run report on")
   .parse(process.argv);
 
