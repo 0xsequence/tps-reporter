@@ -7,7 +7,7 @@
                                |_|                            
 ```
 
-CLI for running throughput analysis against Sequence Relayer on all supported chains. Ingests a 
+CLI for running throughput analysis against Sequence Relayer on all supported chains.
 
 ## Quickstart
 
@@ -27,7 +27,7 @@ Once the account has the necessary permissions, continue to provide the ERC1155 
 
 TPS reporter will now attempt to run the number of mint operations that you provided in parallel and will report the average transaction relay time.
 
-If you are running a large number of transactions, make sure to use the `--key` flag to provide a project access key for [Sequence Builder](https://sequence.builder/). Otherwise report will fail due to rate limiting.
+If you are running a large number of transactions, make sure to use the `--key` flag to provide a project access key for [Sequence Builder](https://sequence.build/). Otherwise report will fail due to rate limiting.
 
 ## Options
 
