@@ -1,3 +1,5 @@
+#! /usr/bin/env node
+
 import { performance } from 'perf_hooks';
 
 import { Command } from "commander";

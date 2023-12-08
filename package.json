@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Run TPS analysis against Sequence Relayer",
   "main": "index.js",
+  "bin": {
+    "tpsreporter": "./dist/index.js"
+  },
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

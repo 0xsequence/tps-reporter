@@ -1,5 +1,14 @@
 # TPS Reporter
 
+```
+  _____ ____  ____    ____                       _            
+ |_   _|  _ \/ ___|  |  _ \ ___ _ __   ___  _ __| |_ ___ _ __ 
+   | | | |_) \___ \  | |_) / _ \ '_ \ / _ \| '__| __/ _ \ '__|
+   | | |  __/ ___) | |  _ <  __/ |_) | (_) | |  | ||  __/ |   
+   |_| |_|   |____/  |_| \_\___| .__/ \___/|_|   \__\___|_|   
+                               |_|                            
+```
+
 CLI for running throughput analysis against Sequence Relayer on all supported chains.
 
 ## Quickstart
@@ -19,3 +28,18 @@ Before continuing, ensure that this address has mint permissions on the contract
 Once the address has the necessary permissions, continue to provide the contract address.
 
 TPS reporter will now attempt to run the number of mint operations that you provided in parallel and will report the average transaction relay time.
+
+## Installation
+
+```
+npm install
+npm run build
+```
+
+If desired, you can now install `tpsreporter` on your system with:
+
+```
+npm install -g .
+```
+
+Now you can access it directly with `tpsreporter`.
