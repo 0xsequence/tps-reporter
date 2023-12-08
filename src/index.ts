@@ -20,8 +20,14 @@ program
 const privateKey = readline.question("Private key for EOA wallet: ", { hideEchoBack: true });
 const options = program.opts();
 
-const CONTRACT_ADDRESS = "0xa68eb569682a63e330eda29d703c10c6dde721bb";
+const BUILDER_ACCESS_KEY = "4o2Uh6qbfGICYVnQBMPW8MlAAAAAAAAAA"
+const CONTRACT_ADDRESSES = {
+    ETHEREUM: "",
+    ARBITRUM: "0x5f87ca3003ec99ff76ec34c2837bc87178abfdeb",
+    POLYGON: "",
+}
 
+let contractAddress = CONTRACT_ADDRESSES.ETHEREUM;
 let targetAddress = "0xa2A7cD4302836767D194e2321E34B834494e0a28";
 
 if (options.target) {
@@ -37,12 +43,14 @@ if (options.chain) {
             break;
         case "polygon":
             chainCode = ChainId.POLYGON;
+            contractAddress = CONTRACT_ADDRESSES.POLYGON;
             break;
         case "polygon-zkevm":
             chainCode = ChainId.POLYGON_ZKEVM;
             break;
         case "arbitrum":
             chainCode = ChainId.ARBITRUM;
+            contractAddress = CONTRACT_ADDRESSES.ARBITRUM;
             break;
         case "arbitrum-nova":
             chainCode = ChainId.ARBITRUM_NOVA;
@@ -66,9 +74,9 @@ if (options.chain) {
     console.log("Selected chain: ", options.chain);
 }
 
-runReport(chainCode, targetAddress)
+runReport(chainCode, targetAddress, contractAddress)
 
-async function runReport(chainId: ChainId, targetWalletAddress: string) {
+async function runReport(chainId: ChainId, targetWalletAddress: string, contractAddress: string) {
     const provider = ethers.getDefaultProvider();
     const wallet = new ethers.Wallet(privateKey, provider);
 
@@ -79,27 +87,38 @@ async function runReport(chainId: ChainId, targetWalletAddress: string) {
     console.log(session.account.address);
 
     const signer = session.account.getSigner(chainId);
-
+    
     const erc1155Interface = new ethers.utils.Interface([
-        'function mint(to address, tokenId uint256, amount uint256, data bytes)'
+        'function mint(address to, uint256 tokenId, uint256 amount, bytes data)'
     ]);
 
+    console.log("Interface: ", erc1155Interface);
+    
     const data = erc1155Interface.encodeFunctionData(
-        'mint', [targetWalletAddress, "1", "1", "0x00"]
+        'mint', [`${targetWalletAddress}`, "1", "1", "0x00"]
     );
-
-    const txnResponse = await signer.sendTransaction({
-        to: CONTRACT_ADDRESS,
+    
+    console.log("Data: ", data);
+    
+    const transaction = {
+        to: contractAddress,
         data: data
-    });
-
-    const txnReceipt = await txnResponse.wait();
-
-    if (txnReceipt.status != 1) {
-        console.error(`Unexpected status: ${txnReceipt.status}`);
-    } else {
-        console.log(`Transaction completed: ${txnReceipt.transactionHash}`);
     }
+    console.log(transaction);
 
-    process.exit()
+    try {
+        const txnResponse = await signer.sendTransaction(transaction);
+        const txnReceipt = await txnResponse.wait();
+
+        if (txnReceipt.status != 1) {
+            console.error(`Unexpected status: ${txnReceipt.status}`);
+        } else {
+            console.log(`Transaction completed: ${txnReceipt.transactionHash}`);
+        }    
+    } catch (error) {
+        console.error(error);
+        return;
+    } finally {
+        process.exit()
+    }
 }
