@@ -27,14 +27,14 @@ const CONTRACT_ADDRESSES = {
     POLYGON: "",
 }
 
-let contractAddress = CONTRACT_ADDRESSES.ETHEREUM;
+let contractAddress = CONTRACT_ADDRESSES.ARBITRUM;
 let targetAddress = "0xa2A7cD4302836767D194e2321E34B834494e0a28";
 
 if (options.target) {
     targetAddress = options.target;
 }
 
-let chainCode = ChainId.MAINNET;
+let chainCode = ChainId.ARBITRUM;
 
 if (options.chain) {
     switch (options.chain) {
