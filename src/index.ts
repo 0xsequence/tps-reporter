@@ -30,13 +30,38 @@ const options = program.opts();
 let privateKey = "";
 let contractAddress = "";
 let targetAddress = "";
-let projectAccessKey = "";
 
 if (options.private) {
     privateKey = options.private;
 } else {
     privateKey = readline.question("Private key for EOA wallet: ", { hideEchoBack: true });
 }
+
+const chainConfig = findSupportedNetwork(options.chain);
+
+if (chainConfig === undefined) {
+    console.error("Unsupported network");
+    process.exit();
+}
+
+console.log("Selected chain: ", chainConfig.name);
+
+let nodeURL = chainConfig.rpcUrl;
+
+if (options.key) {
+    nodeURL += "/" + options.key;
+}
+
+const chainCode = chainConfig.chainId;
+const provider = new ethers.providers.JsonRpcProvider(nodeURL);
+const wallet = new ethers.Wallet(privateKey, provider);
+
+const session = await Session.singleSigner({
+    signer: wallet
+});
+
+console.log(`Using wallet: ${session.account.address}`);
+console.warn("Ensure this wallet has mint permissions on the provided contract");
 
 if (options.contract) {
     contractAddress = options.contract;
@@ -47,27 +72,10 @@ if (options.contract) {
 if (options.target) {
     targetAddress = options.target;
 } else {
-    targetAddress = readline.question("Target wallet address: ", {});
-}
-
-if (options.key) {
-    projectAccessKey = options.key;
-} else {
-    projectAccessKey = readline.question("Project access key: ", {});
+    targetAddress = session.account.address;
 }
 
 const totalTransactionCount = Number(options.txns);
-const chainConfig = findSupportedNetwork(options.chain);
-
-if (chainConfig === undefined) {
-    console.error("Unsupported network");
-    process.exit();
-}
-
-console.log("Selected chain: ", chainConfig.name);
-
-const chainCode = chainConfig.chainId;
-const nodeURL = chainConfig.rpcUrl + "/" + projectAccessKey;
 
 if (totalTransactionCount > 1) {
     runParallelTransactionsReport(chainCode, targetAddress, contractAddress, totalTransactionCount);
@@ -77,15 +85,6 @@ if (totalTransactionCount > 1) {
 
 async function runSingleTransactionReport(chainId: ChainId, targetWalletAddress: string, contractAddress: string) {
     console.log(`Running single transaction using ${nodeURL}`);
-
-    const provider = new ethers.providers.JsonRpcProvider(nodeURL);
-    const wallet = new ethers.Wallet(privateKey, provider);
-
-    const session = await Session.singleSigner({
-        signer: wallet
-    });
-
-    console.log(`Using wallet: ${session.account.address}`);
     
     const erc1155Interface = new ethers.utils.Interface([
         'function mint(address to, uint256 tokenId, uint256 amount, bytes data)'
