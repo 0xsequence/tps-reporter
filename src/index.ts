@@ -7,7 +7,7 @@ import figlet from "figlet";
 import readline from "readline-sync";
 
 import { Session } from '@0xsequence/auth';
-import { ChainId } from '@0xsequence/network';
+import { ChainId, findSupportedNetwork } from '@0xsequence/network';
 import { ethers } from 'ethers';
 
 const program = new Command();
@@ -17,73 +17,68 @@ console.log(figlet.textSync("TPS Reporter"));
 program
   .version("0.1.0")
   .description("Run TPS analysis against Sequence Relayer")
-  .option("-c, --chain  [value]", "Chain to run report on (mainnet, polygon, polygon-zkevm, arbitrum, arbitrum-nova, optimism, bsc, avalanche, base)")
+  .option("-c, --chain  [value]", "Chain to run report on (mainnet, polygon, polygon-zkevm, arbitrum, arbitrum-nova, optimism, bsc, avalanche, base)", "arbitrum")
+  .option("-n, --txns  [value]", "How many transactions to run", "1")
   .option("-t, --target  [value]", "Target wallet address that mints should be sent to")
-  .option("-n, --txns  [value]", "How many transactions to run", "100")
+  .option("-k, --key  [value]", "Sequence Builder project access key")
+  .option("-a, --contract  [value]", "ERC1155 contract address to target")
+  .option("-p, --private  [value]", "Private key for EOA wallet")
   .parse(process.argv);
 
-const privateKey = readline.question("Private key for EOA wallet: ", { hideEchoBack: true });
 const options = program.opts();
 
-const BUILDER_ACCESS_KEY = "4o2Uh6qbfGICYVnQBMPW8MlAAAAAAAAAA"
-const CONTRACT_ADDRESSES = {
-    ETHEREUM: "",
-    ARBITRUM: "0x5f87ca3003ec99ff76ec34c2837bc87178abfdeb",
-    POLYGON: "",
+let privateKey = "";
+let contractAddress = "";
+let targetAddress = "";
+let projectAccessKey = "";
+
+if (options.private) {
+    privateKey = options.private;
+} else {
+    privateKey = readline.question("Private key for EOA wallet: ", { hideEchoBack: true });
 }
 
-let contractAddress = CONTRACT_ADDRESSES.ARBITRUM;
-let targetAddress = "0xa2A7cD4302836767D194e2321E34B834494e0a28";
+if (options.contract) {
+    contractAddress = options.contract;
+} else {
+    contractAddress = readline.question("Address for ERC1155 contract: ", {});
+}
 
 if (options.target) {
     targetAddress = options.target;
+} else {
+    targetAddress = readline.question("Target wallet address: ", {});
 }
 
-let totalTransactionCount = Number(options.txns)
-let chainCode = ChainId.ARBITRUM;
-
-if (options.chain) {
-    switch (options.chain) {
-        case "mainnet":
-            chainCode = ChainId.MAINNET;
-            break;
-        case "polygon":
-            chainCode = ChainId.POLYGON;
-            contractAddress = CONTRACT_ADDRESSES.POLYGON;
-            break;
-        case "polygon-zkevm":
-            chainCode = ChainId.POLYGON_ZKEVM;
-            break;
-        case "arbitrum":
-            chainCode = ChainId.ARBITRUM;
-            contractAddress = CONTRACT_ADDRESSES.ARBITRUM;
-            break;
-        case "arbitrum-nova":
-            chainCode = ChainId.ARBITRUM_NOVA;
-            break;
-        case "optimism":
-            chainCode = ChainId.OPTIMISM;
-            break;
-        case "bsc":
-            chainCode = ChainId.BSC;
-            break;
-        case "avalanche":
-            chainCode = ChainId.AVALANCHE;
-            break;
-        case "base":
-            chainCode = ChainId.BASE;
-            break;
-        default:
-            break;
-    }
-
-    console.log("Selected chain: ", options.chain);
+if (options.key) {
+    projectAccessKey = options.key;
+} else {
+    projectAccessKey = readline.question("Project access key: ", {});
 }
 
-runParallelTransactionsReport(chainCode, targetAddress, contractAddress, totalTransactionCount)
+const totalTransactionCount = Number(options.txns);
+const chainConfig = findSupportedNetwork(options.chain);
+
+if (chainConfig === undefined) {
+    console.error("Unsupported network");
+    process.exit();
+}
+
+console.log("Selected chain: ", chainConfig.name);
+
+const chainCode = chainConfig.chainId;
+const nodeURL = chainConfig.rpcUrl + "/" + projectAccessKey;
+
+if (totalTransactionCount > 1) {
+    runParallelTransactionsReport(chainCode, targetAddress, contractAddress, totalTransactionCount);
+} else {
+    runSingleTransactionReport(chainCode, targetAddress, contractAddress);
+}
 
 async function runSingleTransactionReport(chainId: ChainId, targetWalletAddress: string, contractAddress: string) {
-    const provider = ethers.getDefaultProvider();
+    console.log(`Running single transaction using ${nodeURL}`);
+
+    const provider = new ethers.providers.JsonRpcProvider(nodeURL);
     const wallet = new ethers.Wallet(privateKey, provider);
 
     const session = await Session.singleSigner({
@@ -108,7 +103,7 @@ async function runSingleTransactionReport(chainId: ChainId, targetWalletAddress:
             to: contractAddress,
             data: transactionData,
         });
-        
+
         const txnReceipt = await txnResponse.wait();
         const txnEndTime = performance.now();
 
@@ -118,7 +113,9 @@ async function runSingleTransactionReport(chainId: ChainId, targetWalletAddress:
             console.log(`Transaction completed: ${txnReceipt.transactionHash}`);
         }
 
-        console.log(`Transaction time: ${txnEndTime - txnStartTime} ms`);
+        let totalTransactionTime = txnEndTime - txnStartTime;
+    
+        console.log(`Transaction time: ${totalTransactionTime}ms (${totalTransactionTime/1000}s)`);
     } catch (error) {
         console.error(error);
         return;
@@ -128,7 +125,9 @@ async function runSingleTransactionReport(chainId: ChainId, targetWalletAddress:
 }
 
 async function runParallelTransactionsReport(chainId: ChainId, targetWalletAddress: string, contractAddress: string, totalTransactions: number) {
-    const provider = ethers.getDefaultProvider();
+    console.log(`Running ${totalTransactions} transactions using ${nodeURL}`);
+
+    const provider = new ethers.providers.JsonRpcProvider(nodeURL);
     const wallet = new ethers.Wallet(privateKey, provider);
 
     const session = await Session.singleSigner({
@@ -165,8 +164,12 @@ async function runParallelTransactionsReport(chainId: ChainId, targetWalletAddre
         const txnStartTime = performance.now();
         await Promise.all(transactions);
         const txnEndTime = performance.now();
-    
-        console.log(`Transaction time: ${txnEndTime - txnStartTime} ms`);
+
+        let totalTransactionTime = txnEndTime - txnStartTime;
+        let averageTransactionTime = totalTransactionTime / totalTransactions;
+
+        console.log(`Total transaction time: ${totalTransactionTime}ms (${totalTransactionTime/1000}s)`);
+        console.log(`Average transaction time: ${averageTransactionTime}ms (${averageTransactionTime/1000}s)`);
     } catch (error) {
         console.error(error);
     } finally {
