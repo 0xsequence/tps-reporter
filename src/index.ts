@@ -19,6 +19,7 @@ program
   .description("Run TPS analysis against Sequence Relayer")
   .option("-c, --chain  [value]", "Chain to run report on (mainnet, polygon, polygon-zkevm, arbitrum, arbitrum-nova, optimism, bsc, avalanche, base)")
   .option("-t, --target  [value]", "Target wallet address that mints should be sent to")
+  .option("-n, --txns  [value]", "How many transactions to run", "100")
   .parse(process.argv);
 
 const privateKey = readline.question("Private key for EOA wallet: ", { hideEchoBack: true });
@@ -38,6 +39,7 @@ if (options.target) {
     targetAddress = options.target;
 }
 
+let totalTransactionCount = Number(options.txns)
 let chainCode = ChainId.ARBITRUM;
 
 if (options.chain) {
@@ -78,9 +80,9 @@ if (options.chain) {
     console.log("Selected chain: ", options.chain);
 }
 
-runReport(chainCode, targetAddress, contractAddress)
+runParallelTransactionsReport(chainCode, targetAddress, contractAddress, totalTransactionCount)
 
-async function runReport(chainId: ChainId, targetWalletAddress: string, contractAddress: string) {
+async function runSingleTransactionReport(chainId: ChainId, targetWalletAddress: string, contractAddress: string) {
     const provider = ethers.getDefaultProvider();
     const wallet = new ethers.Wallet(privateKey, provider);
 
@@ -89,25 +91,24 @@ async function runReport(chainId: ChainId, targetWalletAddress: string, contract
     });
 
     console.log(`Using wallet: ${session.account.address}`);
-
-    const signer = session.account.getSigner(chainId);
     
     const erc1155Interface = new ethers.utils.Interface([
         'function mint(address to, uint256 tokenId, uint256 amount, bytes data)'
     ]);
     
-    const data = erc1155Interface.encodeFunctionData(
+    const transactionData = erc1155Interface.encodeFunctionData(
         'mint', [`${targetWalletAddress}`, "1", "1", "0x00"]
     );
-    
-    const transaction = {
-        to: contractAddress,
-        data: data
-    }
+
+    const signer = session.account.getSigner(chainId);
 
     try {
         const txnStartTime = performance.now();
-        const txnResponse = await signer.sendTransaction(transaction);
+        const txnResponse = await signer.sendTransaction({
+            to: contractAddress,
+            data: transactionData,
+        });
+        
         const txnReceipt = await txnResponse.wait();
         const txnEndTime = performance.now();
 
@@ -121,6 +122,53 @@ async function runReport(chainId: ChainId, targetWalletAddress: string, contract
     } catch (error) {
         console.error(error);
         return;
+    } finally {
+        process.exit()
+    }
+}
+
+async function runParallelTransactionsReport(chainId: ChainId, targetWalletAddress: string, contractAddress: string, totalTransactions: number) {
+    const provider = ethers.getDefaultProvider();
+    const wallet = new ethers.Wallet(privateKey, provider);
+
+    const session = await Session.singleSigner({
+        signer: wallet
+    });
+
+    console.log(`Using wallet: ${session.account.address}`);
+    
+    const erc1155Interface = new ethers.utils.Interface([
+        'function mint(address to, uint256 tokenId, uint256 amount, bytes data)'
+    ]);
+    
+    const transactionData = erc1155Interface.encodeFunctionData(
+        'mint', [`${targetWalletAddress}`, "1", "1", "0x00"]
+    );
+
+    let transactions: Promise<ethers.providers.TransactionResponse>[] = [];
+
+    for (let index = 0; index < totalTransactions; index++) {
+        const nonceSpace = ethers.BigNumber.from(ethers.utils.hexlify(ethers.utils.randomBytes(20)));
+        const signer = session.account.getSigner(chainId, {
+            nonceSpace: nonceSpace,
+        });
+
+        const transaction = {
+            to: contractAddress,
+            data: transactionData,
+        };
+
+        transactions.push(signer.sendTransaction(transaction));
+    }
+
+    try {
+        const txnStartTime = performance.now();
+        await Promise.all(transactions);
+        const txnEndTime = performance.now();
+    
+        console.log(`Transaction time: ${txnEndTime - txnStartTime} ms`);
+    } catch (error) {
+        console.error(error);
     } finally {
         process.exit()
     }
