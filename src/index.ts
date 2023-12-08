@@ -1,3 +1,5 @@
+import { performance } from 'perf_hooks';
+
 import { Command } from "commander";
 import figlet from "figlet";
 import readline from "readline-sync";
@@ -84,37 +86,36 @@ async function runReport(chainId: ChainId, targetWalletAddress: string, contract
         signer: wallet
     });
 
-    console.log(session.account.address);
+    console.log(`Using wallet: ${session.account.address}`);
 
     const signer = session.account.getSigner(chainId);
     
     const erc1155Interface = new ethers.utils.Interface([
         'function mint(address to, uint256 tokenId, uint256 amount, bytes data)'
     ]);
-
-    console.log("Interface: ", erc1155Interface);
     
     const data = erc1155Interface.encodeFunctionData(
         'mint', [`${targetWalletAddress}`, "1", "1", "0x00"]
     );
     
-    console.log("Data: ", data);
-    
     const transaction = {
         to: contractAddress,
         data: data
     }
-    console.log(transaction);
 
     try {
+        const txnStartTime = performance.now();
         const txnResponse = await signer.sendTransaction(transaction);
         const txnReceipt = await txnResponse.wait();
+        const txnEndTime = performance.now();
 
         if (txnReceipt.status != 1) {
             console.error(`Unexpected status: ${txnReceipt.status}`);
         } else {
             console.log(`Transaction completed: ${txnReceipt.transactionHash}`);
-        }    
+        }
+
+        console.log(`Transaction time: ${txnEndTime - txnStartTime} ms`);
     } catch (error) {
         console.error(error);
         return;
