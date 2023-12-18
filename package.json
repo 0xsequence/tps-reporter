@@ -15,7 +15,7 @@
   "author": "Taylan Pince",
   "license": "Apache-2.0",
   "dependencies": {
-    "0xsequence": "^1.5.0",
+    "0xsequence": "^0.0.0-20231214172616",
     "commander": "^11.1.0",
     "ethers": "^5.7.2",
     "figlet": "^1.7.0",

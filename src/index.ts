@@ -9,6 +9,7 @@ import readline from "readline-sync";
 import { Session } from '@0xsequence/auth';
 import { ChainId, findSupportedNetwork } from '@0xsequence/network';
 import { ethers } from 'ethers';
+import { sign } from 'crypto';
 
 const program = new Command();
 
@@ -57,7 +58,8 @@ const provider = new ethers.providers.JsonRpcProvider(nodeURL);
 const wallet = new ethers.Wallet(privateKey, provider);
 
 const session = await Session.singleSigner({
-    signer: wallet
+    signer: wallet,
+    projectAccessKey: options.key,
 });
 
 console.log(`Using wallet: ${session.account.address}`);
@@ -102,10 +104,11 @@ async function runSingleTransactionReport(chainId: ChainId, targetWalletAddress:
             to: contractAddress,
             data: transactionData,
         });
-
+        
         const txnReceipt = await txnResponse.wait();
         const txnEndTime = performance.now();
-
+        console.log(txnResponse);
+        console.log(txnReceipt);
         if (txnReceipt.status != 1) {
             console.error(`Unexpected status: ${txnReceipt.status}`);
         } else {
@@ -125,15 +128,6 @@ async function runSingleTransactionReport(chainId: ChainId, targetWalletAddress:
 
 async function runParallelTransactionsReport(chainId: ChainId, targetWalletAddress: string, contractAddress: string, totalTransactions: number) {
     console.log(`Running ${totalTransactions} transactions using ${nodeURL}`);
-
-    const provider = new ethers.providers.JsonRpcProvider(nodeURL);
-    const wallet = new ethers.Wallet(privateKey, provider);
-
-    const session = await Session.singleSigner({
-        signer: wallet
-    });
-
-    console.log(`Using wallet: ${session.account.address}`);
     
     const erc1155Interface = new ethers.utils.Interface([
         'function mint(address to, uint256 tokenId, uint256 amount, bytes data)'
@@ -161,8 +155,10 @@ async function runParallelTransactionsReport(chainId: ChainId, targetWalletAddre
 
     try {
         const txnStartTime = performance.now();
-        await Promise.all(transactions);
+        const receipts = await Promise.all(transactions);
         const txnEndTime = performance.now();
+
+        console.log(receipts);
 
         let totalTransactionTime = txnEndTime - txnStartTime;
         let averageTransactionTime = totalTransactionTime / totalTransactions;
