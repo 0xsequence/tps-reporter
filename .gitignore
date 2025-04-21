@@ -10,3 +10,6 @@ web_modules/
 dist/
 
 default.config
+
+pnpm-lock.yaml
+

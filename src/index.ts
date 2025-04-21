@@ -54,11 +54,11 @@ if (options.key) {
 }
 
 const chainCode = chainConfig.chainId;
-const provider = new ethers.providers.JsonRpcProvider(nodeURL);
+const provider = new ethers.JsonRpcProvider(nodeURL);
 const wallet = new ethers.Wallet(privateKey, provider);
 
 const session = await Session.singleSigner({
-    signer: wallet,
+    signer: wallet as any, // Type assertion needed due to compatibility issues
     projectAccessKey: options.key,
 });
 
@@ -88,7 +88,7 @@ if (totalTransactionCount > 1) {
 async function runSingleTransactionReport(chainId: ChainId, targetWalletAddress: string, contractAddress: string) {
     console.log(`Running single transaction using ${nodeURL}`);
     
-    const erc1155Interface = new ethers.utils.Interface([
+    const erc1155Interface = new ethers.Interface([
         'function mint(address to, uint256 tokenId, uint256 amount, bytes data)'
     ]);
     
@@ -109,10 +109,16 @@ async function runSingleTransactionReport(chainId: ChainId, targetWalletAddress:
         const txnEndTime = performance.now();
         console.log(txnResponse);
         console.log(txnReceipt);
+        
+        if (!txnReceipt) {
+            console.error("Transaction receipt is null");
+            return;
+        }
+        
         if (txnReceipt.status != 1) {
             console.error(`Unexpected status: ${txnReceipt.status}`);
         } else {
-            console.log(`Transaction completed: ${txnReceipt.transactionHash}`);
+            console.log(`Transaction completed: ${txnReceipt.hash}`);
         }
 
         let totalTransactionTime = txnEndTime - txnStartTime;
@@ -129,7 +135,7 @@ async function runSingleTransactionReport(chainId: ChainId, targetWalletAddress:
 async function runParallelTransactionsReport(chainId: ChainId, targetWalletAddress: string, contractAddress: string, totalTransactions: number) {
     console.log(`Running ${totalTransactions} transactions using ${nodeURL}`);
     
-    const erc1155Interface = new ethers.utils.Interface([
+    const erc1155Interface = new ethers.Interface([
         'function mint(address to, uint256 tokenId, uint256 amount, bytes data)'
     ]);
     
@@ -137,10 +143,10 @@ async function runParallelTransactionsReport(chainId: ChainId, targetWalletAddre
         'mint', [`${targetWalletAddress}`, "1", "1", "0x00"]
     );
 
-    let transactions: Promise<ethers.providers.TransactionResponse>[] = [];
+    let transactions: Promise<ethers.TransactionResponse>[] = [];
 
     for (let index = 0; index < totalTransactions; index++) {
-        const nonceSpace = ethers.BigNumber.from(ethers.utils.hexlify(ethers.utils.randomBytes(20)));
+        const nonceSpace = ethers.toBigInt(ethers.hexlify(ethers.randomBytes(20)));
         const signer = session.account.getSigner(chainId, {
             nonceSpace: nonceSpace,
         });
